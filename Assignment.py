@@ -14,6 +14,10 @@ class CSP:
         # the variable pair (i, j)
         self.constraints = {}
 
+        self.number_of_rec = 0
+
+        self.number_of_fails = 0
+
     def add_variable(self, name, domain):
         """Add a new variable to the CSP. 'name' is the variable name
         and 'domain' is a list of the legal values for the variable.
@@ -68,9 +72,11 @@ class CSP:
                 self.add_constraint_one_way(i, j, lambda x, y: x != y)
 
     def consistent(self, assignment, value, var):
-        if value in assignment[var]:
-            return True
-        return False
+        for neighbor in self.get_all_neighboring_arcs(var):
+            if len(assignment[neighbor[0]]) == 1:
+                if value in assignment[neighbor[0]]:
+                    return False
+        return True
 
 
     def backtracking_search(self):
@@ -120,23 +126,21 @@ class CSP:
         #gets a new unassigned variable
         var = self.select_unassigned_variable(assignment)
         for value in assignment[var]:
-            if self.consistent(assignment, value, var): #Checks if the variable is compatiable with the rules
-                assignment = copy.deepcopy(assignment)
-                queue = self.get_all_neighboring_arcs(var)
-                inferences = self.inference(assignment, queue)
+            copy_assignment = copy.deepcopy(assignment)
+            copy_assignment[var] = [value]
+            self.domains = copy_assignment
 
-                #if inference has occured
-                if inferences:
-                    self.add_variable(value, assignment)
-                    result = self.backtrack(assignment)
-                    if result:
-                        return result
-                del assignment[value]
+            if self.consistent(copy_assignment, value, var): #Checks if the variable is compatiable with the rules
+                self.number_of_rec += 1
+                #if inference has occured start new recursive call with that value added to copy
+                result = self.backtrack(copy_assignment)
+                if result:
+                    return result
+                else:
+                    copy_assignment[var].remove(value)
+
+        self.number_of_fails += 1   
         return False
-
-
-
-
 
 
 
@@ -165,11 +169,10 @@ class CSP:
         while queue:
             (x_i, x_j) = queue.pop()
             if self.revise(assignment, x_i, x_j):
-                #print(self.get_all_neighboring_arcs(x_i))
-                if not self.domains[x_i]:
+                if not assignment[x_i]:
                     return False
                 for x_k in self.get_all_neighboring_arcs(x_i):
-                    if x_k[0] != x_j:
+                    if x_k[0] != x_j: #check to not add excisting
                         queue.append(tuple([x_k[0], x_i]))
                         
         return True
@@ -184,10 +187,12 @@ class CSP:
         between i and j, the value should be deleted from i's list of
         legal values in 'assignment'.
         """
+        #removes illegal values from domain
         revised = False
         for x in assignment[i]:
             if all(not (x,y) in self.constraints[i][j] for y in assignment[j]):
                 assignment[i].remove(x)
+                self.domains[i].remove(x)
                 revised = True
                 
                 
@@ -258,7 +263,13 @@ def print_sudoku_solution(solution):
             
     
 def main():
-    csp = create_sudoku_csp("easy.txt")
+    csp = create_sudoku_csp("veryhard.txt")
+    print()
     print_sudoku_solution(csp.backtracking_search())
+
+    print("Number of recursions: ", csp.number_of_rec)
+    print()
+    print("Number of failures in backtrack: ", csp.number_of_fails)
+    print()
 
 main()
