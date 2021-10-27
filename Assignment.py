@@ -113,25 +113,25 @@ class CSP:
         assignments and inferences that took place in previous
         iterations of the loop.
         """
+        #if no unassigned variables are left, the board is completed
         if not self.select_unassigned_variable(assignment):
             return assignment
 
+        #gets a new unassigned variable
         var = self.select_unassigned_variable(assignment)
         for value in assignment[var]:
-            print(assignment[var])
-            print(self.domains[var])
-            print('\n')
-            if self.consistent(assignment, value, var):
+            if self.consistent(assignment, value, var): #Checks if the variable is compatiable with the rules
                 assignment = copy.deepcopy(assignment)
                 queue = self.get_all_neighboring_arcs(var)
                 inferences = self.inference(assignment, queue)
 
+                #if inference has occured
                 if inferences:
-                    self.add_variable(var, assignment)
+                    self.add_variable(value, assignment)
                     result = self.backtrack(assignment)
                     if result:
                         return result
-                del assignment[var]
+                del assignment[value]
         return False
 
 
@@ -146,10 +146,13 @@ class CSP:
         in 'assignment' that have not yet been decided, i.e. whose list
         of legal values has a length greater than one.
         """
+        #finds a new unassigned variable, this one chooses the first avaliable
         for key in assignment:
             if(len(assignment.get(key))>1):
                 return key
         return False
+
+    
 
     def inference(self, assignment, queue):
         """The function 'AC-3' from the pseudocode in the textbook.
@@ -157,6 +160,8 @@ class CSP:
         the lists of legal values for each undecided variable. 'queue'
         is the initial queue of arcs that should be visited.
         """
+
+        #checks, and then deletes in revise function all illegal domain values to shorten down search time for backtrack
         while queue:
             (x_i, x_j) = queue.pop()
             if self.revise(assignment, x_i, x_j):
@@ -180,16 +185,11 @@ class CSP:
         legal values in 'assignment'.
         """
         revised = False
-        isContraints = False
         for x in assignment[i]:
-            for y in assignment[j]:
-                if (x,y) in self.constraints[i][j]:
-                    isNotContraints = True
-                    break
-
-            if not isNotContraints:
+            if all(not (x,y) in self.constraints[i][j] for y in assignment[j]):
                 assignment[i].remove(x)
                 revised = True
+                
                 
         return revised
 
@@ -258,7 +258,7 @@ def print_sudoku_solution(solution):
             
     
 def main():
-    csp = create_map_coloring_csp()
+    csp = create_sudoku_csp("easy.txt")
     print_sudoku_solution(csp.backtracking_search())
 
 main()
